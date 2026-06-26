@@ -9,6 +9,8 @@ reports/
 batch_reports/
 tmp/
 web_runs*/
+desktop_runs*/
+pet_runs*/
 llm_config.json
 .env
 *.local.json

@@ -20,6 +20,8 @@ pdf = ["reportlab>=4.0.0"]
 [project.scripts]
 layout-review = "layout_review_agent.cli:main"
 layout-review-web = "layout_review_agent.web:main"
+layout-review-desktop = "layout_review_agent.desktop:main"
+layout-review-pet = "layout_review_agent.pet:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
