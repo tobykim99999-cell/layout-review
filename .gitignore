@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.idea/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+demo/
+reports/
+batch_reports/
+tmp/
+web_runs*/
+llm_config.json
+.env
+*.local.json
+rule_profiles/_sources/
+rule_profiles/_generated/

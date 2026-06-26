@@ -1,0 +1,166 @@
+{
+  "profile_id": "default_undergraduate",
+  "display_name": "默认本科毕业论文排版规范",
+  "version": "2026.1",
+  "is_demo": true,
+  "source": {
+    "type": "demo",
+    "name": "系统演示规则",
+    "note": "仅用于演示审核引擎，不代表任何学校官方规范。正式使用前必须创建目标学校规则库。"
+  },
+  "description": "首版示例规则库，可按院校规范复制修改。",
+  "rules": [
+    {
+      "id": "page-a4-margins",
+      "category": "页面设置",
+      "description": "A4 纸张与常规页边距",
+      "selector": {"element_type": "section"},
+      "expected": {
+        "page_width_cm": 21.0,
+        "page_height_cm": 29.7,
+        "top_margin_cm": 2.5,
+        "bottom_margin_cm": 2.5,
+        "left_margin_cm": 2.8,
+        "right_margin_cm": 2.5
+      },
+      "severity": "major",
+      "status": "auto_fixable",
+      "confidence": 0.98,
+      "auto_fix": true,
+      "tolerance": 0.08,
+      "suggestion": "设置为 A4 纸，页边距按学校规范统一。"
+    },
+    {
+      "id": "level-1-heading",
+      "category": "标题体系",
+      "description": "一级标题格式",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "text_regex": "^(第[一二三四五六七八九十0-9]+章|[一二三四五六七八九十]+、)\\s*.+"
+      },
+      "expected": {
+        "font_name": "黑体",
+        "font_size_pt": 16,
+        "bold": true,
+        "alignment": "center",
+        "line_spacing": 1.5,
+        "first_line_indent_cm": 0
+      },
+      "severity": "major",
+      "status": "auto_fixable",
+      "confidence": 0.96,
+      "auto_fix": true,
+      "tolerance": 0.08,
+      "suggestion": "一级标题应居中，黑体三号或学校指定字号，段落格式统一。"
+    },
+    {
+      "id": "level-2-heading",
+      "category": "标题体系",
+      "description": "二级标题格式",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "text_regex": "^(\\d+\\.\\d+|（[一二三四五六七八九十]+）)\\s*.+"
+      },
+      "expected": {
+        "font_name": "黑体",
+        "font_size_pt": 14,
+        "bold": true,
+        "alignment": "left",
+        "line_spacing": 1.5,
+        "first_line_indent_cm": 0
+      },
+      "severity": "major",
+      "status": "auto_fixable",
+      "confidence": 0.95,
+      "auto_fix": true,
+      "tolerance": 0.08,
+      "suggestion": "二级标题应左对齐，黑体四号，编号和段落格式统一。"
+    },
+    {
+      "id": "body-paragraph",
+      "category": "正文格式",
+      "description": "正文段落字体、字号、缩进和行距",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "min_chars": 8,
+        "text_regex_not": [
+          "^(第[一二三四五六七八九十0-9]+章|[一二三四五六七八九十]+、)\\s*.+",
+          "^(\\d+\\.\\d+|（[一二三四五六七八九十]+）)\\s*.+",
+          "^摘要$",
+          "^关键词[:：]",
+          "^目录$",
+          "^参考文献$",
+          "^致谢$",
+          "^(图|表)\\s*\\d+"
+        ]
+      },
+      "expected": {
+        "font_name": "宋体",
+        "font_size_pt": 12,
+        "alignment": "justify",
+        "line_spacing": 1.5,
+        "first_line_indent_cm": 0.74,
+        "space_before_pt": 0,
+        "space_after_pt": 0
+      },
+      "severity": "minor",
+      "status": "auto_fixable",
+      "confidence": 0.97,
+      "auto_fix": true,
+      "tolerance": 0.08,
+      "suggestion": "正文应使用宋体小四、1.5 倍行距、首行缩进约 2 字符。"
+    },
+    {
+      "id": "caption-format",
+      "category": "图表公式",
+      "description": "图题和表题格式",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "text_regex": "^(图|表)\\s*\\d+([-.]\\d+)*\\s+.+"
+      },
+      "expected": {
+        "font_name": "宋体",
+        "font_size_pt": 10.5,
+        "alignment": "center",
+        "line_spacing": 1.0,
+        "first_line_indent_cm": 0
+      },
+      "severity": "minor",
+      "status": "auto_fixable",
+      "confidence": 0.94,
+      "auto_fix": true,
+      "tolerance": 0.08,
+      "suggestion": "图题、表题应居中，字号和行距按规范统一。"
+    }
+  ],
+  "required_sections": [
+    {
+      "id": "required-abstract",
+      "category": "特殊模块",
+      "label": "摘要",
+      "text_regex": "^摘要$",
+      "severity": "major",
+      "suggestion": "论文应包含摘要模块。"
+    },
+    {
+      "id": "required-keywords",
+      "category": "特殊模块",
+      "label": "关键词",
+      "text_regex": "^关键词[:：]",
+      "severity": "major",
+      "suggestion": "摘要后应包含关键词。"
+    },
+    {
+      "id": "required-references",
+      "category": "参考文献",
+      "label": "参考文献",
+      "text_regex": "^参考文献$",
+      "severity": "critical",
+      "suggestion": "论文末尾应包含参考文献模块。"
+    }
+  ]
+}

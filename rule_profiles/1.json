@@ -1,0 +1,281 @@
+{
+  "profile_id": "1",
+  "display_name": "北京林业大学本科毕业论文(设计)撰写与印制规范(2025版)",
+  "version": "2026.1",
+  "is_demo": false,
+  "is_template": false,
+  "is_draft": false,
+  "source": {
+    "type": "uploaded_school_spec",
+    "school": "北京林业大学",
+    "degree_level": "本科",
+    "document_name": "北京林业大学本科毕业论文_设计_撰写与印制规范_2025版_.docx",
+    "uploaded_file": "D:\\my-manage\\project\\layout-review\\rule_profiles\\_sources\\1_北京林业大学本科毕业论文_设计_撰写与印制规范_2025版_.docx",
+    "note": "由已上传规范文件重新自动规范化生成；只允许明显低风险字段自动修复。",
+    "normalization": "local_regenerated_selective_safe_fix"
+  },
+  "description": "根据上传的学校官方规范自动生成；LLM 不可用或未返回 JSON 时由本地确定性抽取器生成。",
+  "rules": [
+    {
+      "id": "page-setup",
+      "category": "页面设置",
+      "description": "页面尺寸与页边距",
+      "selector": {
+        "element_type": "section"
+      },
+      "expected": {
+        "page_width_cm": 21.0,
+        "page_height_cm": 29.7,
+        "top_margin_cm": 3.0,
+        "bottom_margin_cm": 2.5,
+        "left_margin_cm": 3.0,
+        "right_margin_cm": 2.5
+      },
+      "severity": "major",
+      "status": "auto_fixable",
+      "confidence": 0.94,
+      "auto_fix": true,
+      "tolerance": 0.08,
+      "suggestion": "按学校规范统一页面尺寸与页边距。"
+    },
+    {
+      "id": "body-paragraph",
+      "category": "正文格式",
+      "description": "正文段落格式",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "min_chars": 8,
+        "text_regex_not": [
+          "^(第[一二三四五六七八九十0-9]+章|[一二三四五六七八九十]+、)\\s*.+",
+          "^(\\d+\\.\\d+|（[一二三四五六七八九十]+）)\\s*.+",
+          "^摘要$",
+          "^关键词[:：]",
+          "^目录$",
+          "^参考文献$",
+          "^致谢$",
+          "^(图|表)\\s*\\d+"
+        ]
+      },
+      "expected": {
+        "font_name": "宋体",
+        "font_size_pt": 12,
+        "first_line_indent_cm": 0.74,
+        "line_spacing": 1.25,
+        "alignment": "justify"
+      },
+      "severity": "minor",
+      "status": "auto_fixable",
+      "confidence": 0.94,
+      "auto_fix": true,
+      "tolerance": 0.08,
+      "suggestion": "按学校规范统一正文格式。",
+      "safe_paragraph_auto_fix": true,
+      "safe_fix_fields": [
+        "line_spacing",
+        "first_line_indent_cm",
+        "space_before_pt",
+        "space_after_pt"
+      ]
+    },
+    {
+      "id": "level-1-heading",
+      "category": "标题体系",
+      "description": "一级标题格式",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "text_regex": "^(第[一二三四五六七八九十0-9]+章|[一二三四五六七八九十]+、)\\s*.+"
+      },
+      "expected": {
+        "font_name": "宋体",
+        "font_size_pt": 16,
+        "space_before_pt": 0,
+        "space_after_pt": 0,
+        "alignment": "center",
+        "bold": true,
+        "line_spacing": 1.25
+      },
+      "severity": "major",
+      "status": "manual_guided",
+      "confidence": 0.94,
+      "auto_fix": false,
+      "tolerance": 0.08,
+      "suggestion": "按学校规范统一一级标题格式。"
+    },
+    {
+      "id": "level-2-heading",
+      "category": "标题体系",
+      "description": "二级标题格式",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "text_regex": "^(\\d+\\.\\d+|（[一二三四五六七八九十]+）)\\s*.+"
+      },
+      "expected": {
+        "font_name": "宋体",
+        "font_size_pt": 14,
+        "space_before_pt": 0,
+        "bold": true,
+        "line_spacing": 1.25
+      },
+      "severity": "major",
+      "status": "manual_guided",
+      "confidence": 0.94,
+      "auto_fix": false,
+      "tolerance": 0.08,
+      "suggestion": "按学校规范统一二级标题格式。"
+    },
+    {
+      "id": "level-3-heading",
+      "category": "标题体系",
+      "description": "三级标题格式",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "text_regex": "^(\\d+\\.\\d+\\.\\d+|[0-9]+[).、])\\s*.+"
+      },
+      "expected": {
+        "font_name": "宋体",
+        "font_size_pt": 12,
+        "bold": true,
+        "line_spacing": 1.25
+      },
+      "severity": "major",
+      "status": "manual_guided",
+      "confidence": 0.94,
+      "auto_fix": false,
+      "tolerance": 0.08,
+      "suggestion": "按学校规范统一三级标题格式。"
+    },
+    {
+      "id": "caption-format",
+      "category": "图表公式",
+      "description": "图题和表题格式",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "text_regex": "^(图|表)\\s*\\d+([-.]\\d+)*\\s*.+"
+      },
+      "expected": {
+        "font_name": "宋体",
+        "font_size_pt": 9,
+        "alignment": "center",
+        "bold": true,
+        "line_spacing": 1.25
+      },
+      "severity": "minor",
+      "status": "manual_guided",
+      "confidence": 0.94,
+      "auto_fix": false,
+      "tolerance": 0.08,
+      "suggestion": "按学校规范统一图题、表题格式。"
+    },
+    {
+      "id": "references-format",
+      "category": "参考文献",
+      "description": "参考文献条目格式",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "text_regex": "^\\s*\\[?\\d+\\]?\\s*.+"
+      },
+      "expected": {
+        "font_name": "宋体",
+        "font_size_pt": 16,
+        "space_before_pt": 0,
+        "space_after_pt": 0,
+        "alignment": "center",
+        "bold": true,
+        "line_spacing": 1.25
+      },
+      "severity": "major",
+      "status": "manual_guided",
+      "confidence": 0.94,
+      "auto_fix": false,
+      "tolerance": 0.08,
+      "suggestion": "按学校规范统一参考文献条目格式。"
+    }
+  ],
+  "required_sections": [
+    {
+      "id": "required-abstract",
+      "category": "特殊模块",
+      "label": "摘要",
+      "text_regex": "^摘要$",
+      "severity": "major",
+      "suggestion": "论文应包含摘要模块。"
+    },
+    {
+      "id": "required-keywords",
+      "category": "特殊模块",
+      "label": "关键词",
+      "text_regex": "^关键词[:：]",
+      "severity": "major",
+      "suggestion": "摘要后应包含关键词。"
+    },
+    {
+      "id": "required-toc",
+      "category": "目录",
+      "label": "目录",
+      "text_regex": "^目录$",
+      "severity": "major",
+      "suggestion": "论文应包含目录。"
+    },
+    {
+      "id": "required-references",
+      "category": "参考文献",
+      "label": "参考文献",
+      "text_regex": "^参考文献$",
+      "severity": "critical",
+      "suggestion": "论文应包含参考文献模块。"
+    },
+    {
+      "id": "required-thanks",
+      "category": "特殊模块",
+      "label": "致谢",
+      "text_regex": "^致谢$",
+      "severity": "minor",
+      "suggestion": "如学校规范要求，应包含致谢模块。"
+    },
+    {
+      "id": "required-appendix",
+      "category": "特殊模块",
+      "label": "附录",
+      "text_regex": "^附录",
+      "severity": "minor",
+      "suggestion": "如学校规范要求，应包含附录模块。"
+    }
+  ],
+  "manual_review_notes": [
+    "目录页码、页码连续性需要渲染校验或人工复核。",
+    "页眉页脚涉及节、奇偶页或首页差异时需要人工复核。",
+    "图片清晰度、压缩失真需要人工复核。",
+    "复杂公式编号和对齐需要人工复核。"
+  ],
+  "normalization": {
+    "method": "local_deterministic_extractor",
+    "supported_expected_fields": [
+      "alignment",
+      "bold",
+      "bottom_margin_cm",
+      "first_line_indent_cm",
+      "font_name",
+      "font_size_pt",
+      "italic",
+      "left_margin_cm",
+      "line_spacing",
+      "page_height_cm",
+      "page_width_cm",
+      "right_margin_cm",
+      "space_after_pt",
+      "space_before_pt",
+      "top_margin_cm"
+    ],
+    "notes": [
+      "LLM 未配置，已使用本地确定性规则抽取。",
+      "本地抽取器只生成规范原文中能明确识别且当前引擎可执行的格式规则。",
+      "规范中包含需人工或渲染校验确认的项目，已写入 manual_review_notes。"
+    ]
+  }
+}

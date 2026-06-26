@@ -1,0 +1,92 @@
+{
+  "profile_id": "replace_with_school_profile_id",
+  "display_name": "替换为目标学校论文排版规范",
+  "version": "2026.1",
+  "is_demo": false,
+  "is_template": true,
+  "source": {
+    "type": "school_official_spec",
+    "school": "替换为学校名称",
+    "college": "可选：学院/专业",
+    "degree_level": "本科/硕士/博士",
+    "document_name": "替换为官方规范文件名",
+    "template_name": "可选：官方 Word 模板文件名",
+    "published_at": "YYYY-MM-DD",
+    "verified_by": "规则录入/复核人员",
+    "note": "这里写适用范围和例外说明"
+  },
+  "description": "这是学校规则库模板。复制后按目标学校官方规范修改，不要直接用于正式审核。",
+  "rules": [
+    {
+      "id": "page-setup",
+      "category": "页面设置",
+      "description": "页面大小与页边距",
+      "selector": {"element_type": "section"},
+      "expected": {
+        "page_width_cm": 21.0,
+        "page_height_cm": 29.7,
+        "top_margin_cm": 2.5,
+        "bottom_margin_cm": 2.5,
+        "left_margin_cm": 2.8,
+        "right_margin_cm": 2.5
+      },
+      "severity": "major",
+      "status": "auto_fixable",
+      "confidence": 0.98,
+      "auto_fix": true,
+      "tolerance": 0.08,
+      "suggestion": "按目标学校官方规范设置页面。"
+    },
+    {
+      "id": "body-paragraph",
+      "category": "正文格式",
+      "description": "正文段落格式",
+      "selector": {
+        "element_type": "paragraph",
+        "exclude_empty": true,
+        "min_chars": 8,
+        "text_regex_not": [
+          "^摘要$",
+          "^关键词[:：]",
+          "^目录$",
+          "^参考文献$",
+          "^致谢$",
+          "^(图|表)\\s*\\d+"
+        ]
+      },
+      "expected": {
+        "font_name": "宋体",
+        "font_size_pt": 12,
+        "alignment": "justify",
+        "line_spacing": 1.5,
+        "first_line_indent_cm": 0.74,
+        "space_before_pt": 0,
+        "space_after_pt": 0
+      },
+      "severity": "minor",
+      "status": "auto_fixable",
+      "confidence": 0.97,
+      "auto_fix": true,
+      "tolerance": 0.08,
+      "suggestion": "按目标学校官方规范设置正文格式。"
+    }
+  ],
+  "required_sections": [
+    {
+      "id": "required-abstract",
+      "category": "特殊模块",
+      "label": "摘要",
+      "text_regex": "^摘要$",
+      "severity": "major",
+      "suggestion": "论文应包含摘要模块。"
+    },
+    {
+      "id": "required-references",
+      "category": "参考文献",
+      "label": "参考文献",
+      "text_regex": "^参考文献$",
+      "severity": "critical",
+      "suggestion": "论文应包含参考文献模块。"
+    }
+  ]
+}

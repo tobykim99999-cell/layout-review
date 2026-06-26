@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "layout-review-agent"
+version = "0.1.0"
+description = "Multi-agent DOCX thesis layout review and safe-fix tool."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "python-docx>=1.1.0",
+  "openpyxl>=3.1.0",
+  "lxml>=4.9.0"
+]
+
+[project.optional-dependencies]
+pdf = ["reportlab>=4.0.0"]
+
+[project.scripts]
+layout-review = "layout_review_agent.cli:main"
+layout-review-web = "layout_review_agent.web:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+layout_review_agent = ["rules/*.json"]
