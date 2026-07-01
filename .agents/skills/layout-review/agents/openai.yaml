@@ -1,0 +1,4 @@
+interface:
+  display_name: "Layout Review"
+  short_description: "Audit typography and layout quality"
+  default_prompt: "Use $layout-review to audit this screen for typography and layout issues."
