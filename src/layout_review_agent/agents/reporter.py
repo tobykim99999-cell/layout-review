@@ -56,6 +56,54 @@ class ReportWriterAgent(Agent[dict[str, Path]]):
             return [self._to_serializable(item) for item in value]
         return value
 
+    def _group_issue_objects_for_report(self, issues: list[Issue]) -> list[dict[str, Any]]:
+        return self._group_issue_dicts_for_report([issue.to_dict() for issue in issues])
+
+    def _group_issue_dicts_for_report(self, issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+        for issue in issues:
+            location = issue.get("location", {}) or {}
+            element_id = str(location.get("element_id") or "document")
+            grouped.setdefault((str(issue.get("rule_id", "")), element_id), []).append(issue)
+
+        rows: list[dict[str, Any]] = []
+        for group in grouped.values():
+            first = group[0]
+            location = first.get("location", {}) or {}
+            rows.append(
+                {
+                    "issue_id": first.get("issue_id", ""),
+                    "rule_id": first.get("rule_id", ""),
+                    "severity": self._worst_severity(group),
+                    "category": first.get("category", ""),
+                    "status": self._combined_status(group),
+                    "confidence": max(float(issue.get("confidence", 0) or 0) for issue in group),
+                    "location": location.get("element_id", "document"),
+                    "field": ", ".join(str(issue.get("field") or "-") for issue in group),
+                    "actual": "; ".join(f"{issue.get('field') or '-'}={issue.get('actual')}" for issue in group),
+                    "expected": "; ".join(f"{issue.get('field') or '-'}={issue.get('expected')}" for issue in group),
+                    "suggestion": first.get("suggestion", ""),
+                    "preview": location.get("preview", ""),
+                }
+            )
+        return rows
+
+    def _worst_severity(self, issues: list[dict[str, Any]]) -> str:
+        priority = {"critical": 3, "major": 2, "minor": 1}
+        return max(
+            (str(issue.get("severity", "minor")) for issue in issues),
+            key=lambda value: priority.get(value, 0),
+            default="minor",
+        )
+
+    def _combined_status(self, issues: list[dict[str, Any]]) -> str:
+        statuses: list[str] = []
+        for issue in issues:
+            status = str(issue.get("status", ""))
+            if status and status not in statuses:
+                statuses.append(status)
+        return "/".join(statuses)
+
     def _write_excel(self, path: Path, issues: list[Issue]) -> None:
         workbook = Workbook()
         sheet = workbook.active
@@ -77,20 +125,20 @@ class ReportWriterAgent(Agent[dict[str, Path]]):
         for cell in sheet[1]:
             cell.font = Font(bold=True, color="FFFFFF")
             cell.fill = PatternFill("solid", fgColor="305496")
-        for issue in issues:
+        for issue in self._group_issue_objects_for_report(issues):
             sheet.append(
                 [
-                    issue.issue_id,
-                    issue.rule_id,
-                    issue.severity,
-                    issue.category,
-                    issue.status,
-                    issue.confidence,
-                    issue.location.get("element_id"),
-                    issue.field,
-                    str(issue.actual),
-                    str(issue.expected),
-                    issue.suggestion,
+                    issue["issue_id"],
+                    issue["rule_id"],
+                    issue["severity"],
+                    issue["category"],
+                    issue["status"],
+                    issue["confidence"],
+                    issue["location"],
+                    issue["field"],
+                    issue["actual"],
+                    issue["expected"],
+                    issue["suggestion"],
                 ]
             )
         widths = [18, 22, 12, 14, 16, 10, 16, 18, 18, 18, 40]
@@ -199,15 +247,14 @@ class ReportWriterAgent(Agent[dict[str, Path]]):
         skipped_count = len(safe_fix.get("skipped", []))
         iteration = result.get("iteration", {})
         rows = []
-        for issue in issues:
-            location = issue.get("location", {})
+        for issue in self._group_issue_dicts_for_report(issues):
             rows.append(
                 "<tr>"
                 f"<td>{html.escape(issue.get('severity', ''))}</td>"
                 f"<td>{html.escape(issue.get('category', ''))}</td>"
                 f"<td>{html.escape(issue.get('status', ''))}</td>"
                 f"<td>{html.escape(issue.get('rule_id', ''))}</td>"
-                f"<td>{html.escape(str(location.get('element_id', '')))}</td>"
+                f"<td>{html.escape(str(issue.get('location', '')))}</td>"
                 f"<td>{html.escape(str(issue.get('field', '')))}</td>"
                 f"<td>{html.escape(str(issue.get('actual', '')))}</td>"
                 f"<td>{html.escape(str(issue.get('expected', '')))}</td>"

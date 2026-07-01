@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import shutil
 from pathlib import Path
 from typing import Any
@@ -8,6 +7,12 @@ from typing import Any
 from docx import Document
 
 from layout_review_agent.agents.base import Agent
+from layout_review_agent.document_scope import (
+    find_body_bounds_from_paragraphs,
+    is_inside_body_bounds,
+    looks_like_non_body_paragraph,
+    paragraph_index_from_element_id,
+)
 from layout_review_agent.docx_format import apply_paragraph_field, apply_section_field
 from layout_review_agent.models import AgentRunContext, Issue
 
@@ -32,7 +37,7 @@ class SafeFixerAgent(Agent[dict[str, Any]]):
         fixed_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(context.input_path, fixed_path)
         document = Document(str(fixed_path))
-        body_bounds = self._find_body_bounds(document)
+        body_bounds = find_body_bounds_from_paragraphs(list(document.paragraphs))
 
         applied: list[dict[str, Any]] = []
         skipped: list[dict[str, Any]] = []
@@ -175,10 +180,10 @@ class SafeFixerAgent(Agent[dict[str, Any]]):
             return False
         style_name = paragraph.style.name if paragraph.style is not None else ""
         if rule_id == "body-paragraph":
-            index = self._paragraph_index(element_id)
-            if not self._is_inside_body_bounds(index, body_bounds):
+            index = paragraph_index_from_element_id(element_id)
+            if not is_inside_body_bounds(index, body_bounds):
                 return False
-            if self._looks_like_non_body_paragraph(text, style_name):
+            if looks_like_non_body_paragraph(text, style_name):
                 return False
             if "Heading" in style_name or "标题" in style_name:
                 return False
@@ -190,99 +195,6 @@ class SafeFixerAgent(Agent[dict[str, Any]]):
             if run.font.size.pt and run.font.size.pt > 18:
                 return False
         return True
-
-    def _find_body_bounds(self, document: Any) -> dict[str, int | None]:
-        paragraphs = list(document.paragraphs)
-        start = self._find_body_start(paragraphs)
-        end = self._find_body_end(paragraphs, start)
-        return {"start": start, "end": end}
-
-    def _find_body_start(self, paragraphs: list[Any]) -> int | None:
-        toc_index = self._find_first_matching_index(paragraphs, r"^目\s*录$|^contents$", 0)
-        search_from = toc_index + 1 if toc_index is not None else 0
-        for index in range(search_from, len(paragraphs)):
-            text = paragraphs[index].text.strip()
-            if self._looks_like_toc_entry(text):
-                continue
-            if self._looks_like_body_start_heading(text):
-                return index
-        return None
-
-    def _find_body_end(self, paragraphs: list[Any], start: int | None) -> int | None:
-        if start is None:
-            return None
-        for index in range(start + 1, len(paragraphs)):
-            text = paragraphs[index].text.strip()
-            if re.search(r"^(参考文献|致谢|附录|声明|作者简介|攻读学位期间)", text, flags=re.IGNORECASE):
-                return index
-        return None
-
-    def _find_first_matching_index(self, paragraphs: list[Any], pattern: str, start: int) -> int | None:
-        for index in range(start, len(paragraphs)):
-            if re.search(pattern, paragraphs[index].text.strip(), flags=re.IGNORECASE):
-                return index
-        return None
-
-    def _paragraph_index(self, element_id: str) -> int | None:
-        if not element_id.startswith("p-"):
-            return None
-        try:
-            return int(element_id.split("-", 1)[1])
-        except ValueError:
-            return None
-
-    def _is_inside_body_bounds(self, index: int | None, body_bounds: dict[str, int | None]) -> bool:
-        if index is None:
-            return False
-        start = body_bounds.get("start")
-        if start is None or index <= start:
-            return False
-        end = body_bounds.get("end")
-        return end is None or index < end
-
-    def _looks_like_body_start_heading(self, text: str) -> bool:
-        normalized = " ".join(text.split())
-        if not normalized:
-            return False
-        if self._looks_like_toc_entry(normalized):
-            return False
-        return bool(
-            re.search(r"^第[一二三四五六七八九十0-9]+章\s*\S+", normalized)
-            or re.search(r"^[一二三四五六七八九十]+[、.．]\s*\S+", normalized)
-            or re.search(r"^1(?:[.．、]|\s+)\s*\S+", normalized)
-            or re.search(r"^(绪论|引言|前言)$", normalized)
-        )
-
-    def _looks_like_non_body_paragraph(self, text: str, style_name: str) -> bool:
-        normalized = " ".join(text.split())
-        lower_style = style_name.lower()
-        if "toc" in lower_style or "目录" in style_name:
-            return True
-        if self._looks_like_toc_entry(normalized):
-            return True
-        if re.search(
-            r"^(摘\s*要|abstract|关键词|key\s*words?|keywords|目\s*录|contents|参考文献|致谢|附录)",
-            normalized,
-            flags=re.IGNORECASE,
-        ):
-            return True
-        if re.search(r"^(图|表)\s*\d+|^formula\s*\d+", normalized, flags=re.IGNORECASE):
-            return True
-        if re.search(r"^\s*\[?\d+\]?\s+[A-Za-z].+", normalized):
-            return True
-        if not re.search(r"[\u4e00-\u9fff]", normalized) and re.search(r"[A-Za-z]", normalized):
-            return True
-        return False
-
-    def _looks_like_toc_entry(self, text: str) -> bool:
-        normalized = text.strip()
-        if not normalized:
-            return False
-        return bool(
-            re.search(r"(\.{3,}|…{2,}|·{3,}|_{3,})", normalized)
-            or re.search(r"\s+\d+\s*$", normalized)
-            and re.search(r"^(第[一二三四五六七八九十0-9]+章|[0-9]+(?:\.[0-9]+)*|[一二三四五六七八九十]+[、.．])", normalized)
-        )
 
     def _resolve_section(self, document: Any, element_id: str) -> Any | None:
         if not element_id.startswith("section-"):

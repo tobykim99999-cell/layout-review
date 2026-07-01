@@ -554,7 +554,11 @@ def build_local_rule_profile(
                 rule_id="references-format",
                 category="参考文献",
                 description="参考文献条目格式",
-                selector={"element_type": "paragraph", "exclude_empty": True, "text_regex": "^\\s*\\[?\\d+\\]?\\s*.+"},
+                selector={
+                    "element_type": "paragraph",
+                    "exclude_empty": True,
+                    "text_regex": "^(\\s*(\\[\\d{1,3}\\]|\\d{1,3}[.)、])\\s*.+|\\s*\\d{1,3}\\s+.+)",
+                },
                 expected=reference_expected,
                 severity="major",
                 suggestion="按学校规范统一参考文献条目格式。",

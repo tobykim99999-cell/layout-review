@@ -27,4 +27,4 @@ layout-review-pet = "layout_review_agent.pet:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-layout_review_agent = ["rules/*.json"]
+layout_review_agent = ["rules/*.json", "assets/*.png", "assets/*.md"]

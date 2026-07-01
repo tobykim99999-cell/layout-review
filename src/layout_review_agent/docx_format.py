@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -37,49 +38,69 @@ def normalize_float(value: Any, digits: int = 2) -> float | None:
         return None
 
 
-def get_run_font_name(run: Any) -> str | None:
-    if run.font.name:
-        return run.font.name
+def get_run_font_name(run: Any, prefer_east_asia: bool = False) -> str | None:
     r_pr = run._element.rPr
+    east_asia = None
     if r_pr is not None and r_pr.rFonts is not None:
         east_asia = r_pr.rFonts.get(qn("w:eastAsia"))
-        if east_asia:
-            return east_asia
+    if prefer_east_asia and east_asia:
+        return east_asia
+    if run.font.name:
+        return run.font.name
+    if east_asia:
+        return east_asia
     return None
 
 
-def get_style_font_name(style: Any) -> str | None:
+def get_style_font_name(style: Any, prefer_east_asia: bool = False) -> str | None:
     if style is None:
         return None
+    element = getattr(style, "element", None)
+    east_asia = None
+    if element is not None and element.rPr is not None and element.rPr.rFonts is not None:
+        east_asia = element.rPr.rFonts.get(qn("w:eastAsia"))
+    if prefer_east_asia and east_asia:
+        return east_asia
     if getattr(style, "font", None) is not None and style.font.name:
         return style.font.name
+    if east_asia:
+        return east_asia
+    return None
+
+
+def contains_cjk(text: str) -> bool:
+    return bool(re.search(r"[\u4e00-\u9fff]", text))
+
+
+def get_paragraph_font_name(paragraph: Any) -> str | None:
+    prefer_east_asia = contains_cjk(paragraph.text)
+    for run in paragraph.runs:
+        if run.text.strip():
+            name = get_run_font_name(run, prefer_east_asia=prefer_east_asia and contains_cjk(run.text))
+            if name:
+                return name
+    return get_style_font_name(paragraph.style, prefer_east_asia=prefer_east_asia)
+
+
+def get_style_font_size(style: Any) -> float | None:
+    if style is None:
+        return None
+    if getattr(style, "font", None) is not None and style.font.size is not None:
+        return length_to_pt(style.font.size)
     element = getattr(style, "element", None)
     if element is None:
         return None
     r_pr = element.rPr
-    if r_pr is not None and r_pr.rFonts is not None:
-        east_asia = r_pr.rFonts.get(qn("w:eastAsia"))
-        if east_asia:
-            return east_asia
+    if r_pr is not None and r_pr.sz is not None and r_pr.sz.val is not None:
+        return round(float(r_pr.sz.val) / 2, 2)
     return None
-
-
-def get_paragraph_font_name(paragraph: Any) -> str | None:
-    for run in paragraph.runs:
-        if run.text.strip():
-            name = get_run_font_name(run)
-            if name:
-                return name
-    return get_style_font_name(paragraph.style)
 
 
 def get_paragraph_font_size(paragraph: Any) -> float | None:
     for run in paragraph.runs:
         if run.text.strip() and run.font.size is not None:
             return length_to_pt(run.font.size)
-    if paragraph.style is not None and paragraph.style.font.size is not None:
-        return length_to_pt(paragraph.style.font.size)
-    return None
+    return get_style_font_size(paragraph.style)
 
 
 def get_paragraph_bool(paragraph: Any, attr: str) -> bool | None:

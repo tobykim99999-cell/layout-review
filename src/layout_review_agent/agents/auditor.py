@@ -6,6 +6,17 @@ from typing import Any
 from uuid import uuid4
 
 from layout_review_agent.agents.base import Agent
+from layout_review_agent.document_scope import (
+    find_body_bounds_from_elements,
+    find_reference_bounds_from_elements,
+    is_caption_paragraph_element,
+    is_body_paragraph_element,
+    is_reference_heading_element,
+    is_reference_paragraph_element,
+    reference_rule_mode,
+    rule_targets_caption,
+    rule_targets_body_paragraph,
+)
 from layout_review_agent.models import AgentRunContext, AuditSummary, DocumentElement, Issue, ParsedDocument
 from layout_review_agent.rules import RuleProfile
 
@@ -20,13 +31,29 @@ class RuleAuditorAgent(Agent[dict[str, Any]]):
     def run(self, context: AgentRunContext, parsed: ParsedDocument, profile: RuleProfile) -> dict[str, Any]:
         trace = context.start_trace(self.agent_id, "audit_rules")
         issues: list[Issue] = []
+        body_bounds = find_body_bounds_from_elements(parsed.elements)
+        reference_bounds = find_reference_bounds_from_elements(parsed.elements)
+        context.shared.record_metric("audit_body_bounds", body_bounds)
+        context.shared.record_metric("audit_reference_bounds", reference_bounds)
         for rule in profile.rules:
+            body_paragraph_rule = rule_targets_body_paragraph(rule)
+            reference_mode = reference_rule_mode(rule)
+            caption_rule = rule_targets_caption(rule)
             for element in parsed.all_elements():
+                if body_paragraph_rule and not is_body_paragraph_element(element, body_bounds):
+                    continue
+                if reference_mode == "entry" and not is_reference_paragraph_element(element, reference_bounds):
+                    continue
+                if reference_mode == "heading" and not is_reference_heading_element(element):
+                    continue
+                if caption_rule and not is_caption_paragraph_element(element, body_bounds):
+                    continue
                 if self._matches_selector(element, rule.get("selector", {})):
                     issues.extend(self._audit_element(element, rule))
 
         issues.extend(self._audit_required_sections(parsed, profile))
         summary = self._summarize(issues)
+        context.shared.record_metric("audit_field_issues", len(issues))
         context.shared.record_metric("audit_total_issues", summary.total_issues)
         context.shared.record_metric("audit_score", summary.score)
         context.shared.record_metric("audit_manual_required", summary.manual_required_issues)
@@ -73,6 +100,8 @@ class RuleAuditorAgent(Agent[dict[str, Any]]):
         tolerance = float(rule.get("tolerance", 0.01))
         for field, expected_value in expected.items():
             actual_value = element.format.get(field)
+            if actual_value is None:
+                continue
             if self._values_equal(actual_value, expected_value, tolerance):
                 continue
             safe_fix_fields = set(rule.get("safe_fix_fields") or [])
@@ -153,9 +182,10 @@ class RuleAuditorAgent(Agent[dict[str, Any]]):
         return actual == expected
 
     def _summarize(self, issues: list[Issue]) -> AuditSummary:
-        severity_counts = Counter(issue.severity for issue in issues)
-        status_counts = Counter(issue.status for issue in issues)
-        category_counts = Counter(issue.category for issue in issues)
+        grouped = self._group_issues_for_summary(issues)
+        severity_counts = Counter(self._worst_severity(group) for group in grouped.values())
+        status_counts = Counter(self._summary_status(group) for group in grouped.values())
+        category_counts = Counter(group[0].category for group in grouped.values())
         penalty = (
             severity_counts.get("critical", 0) * 12
             + severity_counts.get("major", 0) * 6
@@ -163,7 +193,7 @@ class RuleAuditorAgent(Agent[dict[str, Any]]):
         )
         score = max(0, 100 - penalty)
         return AuditSummary(
-            total_issues=len(issues),
+            total_issues=len(grouped),
             score=score,
             by_severity=dict(severity_counts),
             by_status=dict(status_counts),
@@ -172,3 +202,22 @@ class RuleAuditorAgent(Agent[dict[str, Any]]):
             auto_fixable_issues=status_counts.get("auto_fixable", 0),
             manual_required_issues=status_counts.get("manual_required", 0),
         )
+
+    def _group_issues_for_summary(self, issues: list[Issue]) -> dict[tuple[str, str], list[Issue]]:
+        grouped: dict[tuple[str, str], list[Issue]] = {}
+        for issue in issues:
+            element_id = str(issue.location.get("element_id") or "document")
+            grouped.setdefault((issue.rule_id, element_id), []).append(issue)
+        return grouped
+
+    def _worst_severity(self, issues: list[Issue]) -> str:
+        priority = {"critical": 3, "major": 2, "minor": 1}
+        return max((issue.severity for issue in issues), key=lambda value: priority.get(value, 0), default="minor")
+
+    def _summary_status(self, issues: list[Issue]) -> str:
+        statuses = {issue.status for issue in issues}
+        if "manual_required" in statuses:
+            return "manual_required"
+        if "auto_fixable" in statuses:
+            return "auto_fixable"
+        return "manual_guided"

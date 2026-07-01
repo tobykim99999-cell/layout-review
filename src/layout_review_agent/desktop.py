@@ -150,6 +150,7 @@ class LayoutReviewDesktopApp:
         )
         ttk.Button(action_box, text="打开 HTML 报告", command=lambda: self.open_report("html")).pack(side="left", padx=(10, 0))
         ttk.Button(action_box, text="打开结果目录", command=self.open_output_dir).pack(side="left", padx=(10, 0))
+        ttk.Button(action_box, text="导出结果", command=self.export_results).pack(side="left", padx=(10, 0))
 
         summary = ttk.Frame(controls)
         summary.grid(row=4, column=0, sticky="ew", pady=(0, 12))
@@ -358,11 +359,48 @@ class LayoutReviewDesktopApp:
         if not self.result:
             messagebox.showwarning("暂无结果", "请先完成一次审核。")
             return
-        json_path = self.result.get("reports", {}).get("json")
-        if not json_path:
+        reports_dir = self._current_reports_dir()
+        if reports_dir is None:
             messagebox.showwarning("暂无目录", "结果目录不存在。")
             return
-        self._open_path(str(Path(json_path).parent))
+        self._open_path(str(reports_dir))
+
+    def export_results(self) -> None:
+        reports_dir = self._current_reports_dir()
+        if reports_dir is None:
+            messagebox.showwarning("暂无结果", "请先完成一次审核。")
+            return
+        target = filedialog.askdirectory(title="选择导出结果的文件夹")
+        if not target:
+            return
+        destination = self._unique_export_dir(Path(target), reports_dir.parent.name)
+        try:
+            shutil.copytree(reports_dir, destination)
+        except OSError as exc:
+            messagebox.showerror("导出失败", str(exc))
+            return
+        messagebox.showinfo("导出完成", f"结果已导出到：\n{destination}")
+        self._open_path(str(destination))
+
+    def _current_reports_dir(self) -> Path | None:
+        if not self.result:
+            return None
+        json_path = self.result.get("reports", {}).get("json")
+        if not json_path:
+            return None
+        reports_dir = Path(str(json_path)).parent
+        return reports_dir if reports_dir.exists() else None
+
+    def _unique_export_dir(self, target_dir: Path, run_id: str) -> Path:
+        base_name = f"layout_review_{run_id}"
+        destination = target_dir / base_name
+        if not destination.exists():
+            return destination
+        for index in range(2, 1000):
+            candidate = target_dir / f"{base_name}_{index}"
+            if not candidate.exists():
+                return candidate
+        return target_dir / f"{base_name}_{uuid4().hex[:8]}"
 
     def _open_path(self, value: Any) -> None:
         if not value:
@@ -372,10 +410,23 @@ class LayoutReviewDesktopApp:
         if not path.exists():
             messagebox.showwarning("文件不存在", str(path))
             return
+        try:
+            self._launch_path(path)
+        except OSError as exc:
+            parent = path if path.is_dir() else path.parent
+            try:
+                self._launch_path(parent)
+            except OSError:
+                pass
+            messagebox.showwarning("无法直接打开", f"系统无法直接打开：\n{path}\n\n已尝试打开所在目录。\n\n错误：{exc}")
+
+    def _launch_path(self, path: Path) -> None:
         if sys.platform.startswith("win"):
             os.startfile(path)  # type: ignore[attr-defined]
-        else:
-            webbrowser.open(path.resolve().as_uri())
+            return
+        opened = webbrowser.open(path.resolve().as_uri())
+        if not opened:
+            raise OSError(f"无法打开 {path}")
 
     def _set_busy(self, busy: bool, status: str) -> None:
         self.busy = busy

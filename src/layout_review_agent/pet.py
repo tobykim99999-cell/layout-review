@@ -9,7 +9,7 @@ import sys
 import threading
 import webbrowser
 from pathlib import Path
-from tkinter import BooleanVar, Canvas, StringVar, Tk, Toplevel, filedialog, messagebox
+from tkinter import BooleanVar, Canvas, PhotoImage, StringVar, Tk, Toplevel, filedialog, messagebox
 from tkinter import ttk
 from typing import Any
 from uuid import uuid4
@@ -27,20 +27,29 @@ from layout_review_agent.spec_normalizer import extract_spec_text, normalize_spe
 
 DEFAULT_BASE_DIR = "pet_runs"
 TRANSPARENT_COLOR = "#f7fbff"
+PET_CANVAS_WIDTH = 330
+PET_CANVAS_HEIGHT = 260
+PANEL_WIDTH = 370
+PANEL_MIN_HEIGHT = 490
+PANEL_SCREEN_MARGIN = 56
+DEFAULT_PET_IMAGE = Path(__file__).resolve().parent / "assets" / "robot_3d.png"
 
 
 class RobotPetCanvas(Canvas):
     def __init__(self, master: Any, **kwargs: Any) -> None:
         super().__init__(
             master,
-            width=330,
-            height=260,
+            width=PET_CANVAS_WIDTH,
+            height=PET_CANVAS_HEIGHT,
             bg=TRANSPARENT_COLOR,
             highlightthickness=0,
             **kwargs,
         )
         self.tick = 0
         self.mood = "idle"
+        self._source_image: PhotoImage | None = None
+        self.pet_image: PhotoImage | None = None
+        self._load_pet_image(DEFAULT_PET_IMAGE)
         self.after(80, self.animate)
 
     def set_mood(self, mood: str) -> None:
@@ -48,71 +57,118 @@ class RobotPetCanvas(Canvas):
 
     def animate(self) -> None:
         self.tick += 1
-        self.draw_robot()
+        self.draw_pet()
         self.after(80 if self.mood != "busy" else 55, self.animate)
 
-    def draw_robot(self) -> None:
+    def _load_pet_image(self, image_path: Path) -> None:
+        if not image_path.exists():
+            return
+        self._source_image = PhotoImage(file=str(image_path))
+        width = self._source_image.width()
+        height = self._source_image.height()
+        scale = max(1, math.ceil(width / 310), math.ceil(height / 300))
+        self.pet_image = self._source_image.subsample(scale, scale) if scale > 1 else self._source_image
+
+    def draw_pet(self) -> None:
         self.delete("all")
         t = self.tick
-        bob = math.sin(t / 8) * 8
-        wave = math.sin(t / 4) * 10
-        blink = 0 if t % 64 in {0, 1, 2} else 1
-        glow = 1 + math.sin(t / 7) * 0.08
-        cx = 165
-        cy = 92 + bob
+        bob = math.sin(t / 8) * 6
+        pulse = 1 + math.sin(t / 7) * 0.08
+        cx = PET_CANVAS_WIDTH / 2
+        cy = 126 + bob
 
-        self.create_oval(72, 218, 258, 244, fill="#dfeeff", outline="")
-        self.create_oval(83, 215, 247, 238, fill="#edf6ff", outline="")
-
-        self.create_arc(cx - 28, cy - 86, cx + 28, cy - 48, start=20, extent=140, style="arc", outline="#2d7cff", width=2)
-        self.create_oval(cx - 4, cy - 86, cx + 4, cy - 78, fill="#2d7cff", outline="")
-
-        self.create_oval(cx - 108, cy - 30, cx - 72, cy + 36, fill="#4c86ff", outline="")
-        self.create_oval(cx + 72, cy - 30, cx + 108, cy + 36, fill="#4c86ff", outline="")
-        self.create_oval(cx - 92, cy - 58, cx + 92, cy + 58, fill="#dbeeff", outline="")
-        self.create_oval(cx - 82, cy - 48, cx + 82, cy + 50, fill="#2474ff", outline="#8dc6ff", width=3)
-        self.create_oval(cx - 74, cy - 41, cx + 74, cy + 42, fill="#2d8bff", outline="")
-        self.create_oval(cx - 64, cy - 30, cx + 64, cy + 32, fill="#1269df", outline="")
-
-        eye_h = 22 if blink else 4
-        self.create_oval(cx - 43, cy - 14 - eye_h / 2, cx - 25, cy - 14 + eye_h / 2, fill="#9ef8ff", outline="")
-        self.create_oval(cx + 25, cy - 14 - eye_h / 2, cx + 43, cy - 14 + eye_h / 2, fill="#9ef8ff", outline="")
-        self.create_oval(cx - 58, cy - 35, cx - 38, cy - 14, fill="#bdfbff", outline="")
-        self.create_oval(cx + 42, cy - 35, cx + 58, cy - 18, fill="#7eefff", outline="")
-
-        self.create_oval(cx - 46, cy + 64, cx + 46, cy + 134, fill="#eef7ff", outline="#cde8ff", width=2)
-        self.create_oval(cx - 16, cy + 85, cx + 16, cy + 116, fill="#2a78ff", outline="")
-        self.create_text(cx, cy + 101, text="AI", fill="white", font=("Arial", 9, "bold"))
-
-        self.create_line(cx - 40, cy + 83, cx - 82, cy + 111, fill="#d5e9ff", width=10, capstyle="round")
-        self.create_oval(cx - 96, cy + 104, cx - 74, cy + 126, fill="#e9f6ff", outline="")
-        self.create_line(cx + 40, cy + 83, cx + 78 + wave, cy + 96 - abs(wave) / 3, fill="#d5e9ff", width=10, capstyle="round")
-        self.create_oval(cx + 74 + wave, cy + 86 - abs(wave) / 3, cx + 96 + wave, cy + 108 - abs(wave) / 3, fill="#e9f6ff", outline="")
-
-        self.create_line(cx - 20, cy + 128, cx - 38, cy + 158, fill="#d5e9ff", width=11, capstyle="round")
-        self.create_oval(cx - 54, cy + 150, cx - 28, cy + 174, fill="#e9f6ff", outline="")
-        self.create_line(cx + 20, cy + 128, cx + 38, cy + 158, fill="#d5e9ff", width=11, capstyle="round")
-        self.create_oval(cx + 28, cy + 150, cx + 54, cy + 174, fill="#e9f6ff", outline="")
-
-        if self.mood == "busy":
-            for index in range(4):
-                angle = t / 8 + index * math.pi / 2
-                x = cx + math.cos(angle) * 124
-                y = cy + math.sin(angle) * 70
-                size = 4 + index
-                self.create_oval(x - size, y - size, x + size, y + size, fill="#6be7ff", outline="")
-            self.create_oval(cx + 76, cy - 78, cx + 116, cy - 38, fill="#dbeafe", outline="#60a5fa", width=2)
-            self.create_text(cx + 96, cy - 58, text="...", fill="#1d4ed8", font=("Arial", 13, "bold"))
-        elif self.mood == "done":
-            self.create_oval(cx + 76, cy - 78, cx + 116, cy - 38, fill="#dcfce7", outline="#22c55e", width=2)
-            self.create_text(cx + 96, cy - 58, text="OK", fill="#15803d", font=("Arial", 9, "bold"))
-        elif self.mood == "error":
-            self.create_oval(cx + 76, cy - 78, cx + 116, cy - 38, fill="#fee2e2", outline="#ef4444", width=2)
-            self.create_text(cx + 96, cy - 58, text="!", fill="#dc2626", font=("Arial", 13, "bold"))
+        self._draw_shadow(cx, 226, pulse)
+        self._draw_status_orbit(cx, cy, t)
+        if self.pet_image is None:
+            self._draw_missing_asset(cx, cy)
         else:
-            pulse = int(80 * glow)
-            self.create_oval(cx + 96, cy + 88, cx + 96 + pulse / 3, cy + 88 + pulse / 3, fill="#c8fbff", outline="")
-            self.create_oval(cx + 92, cy + 84, cx + 106, cy + 98, fill="#22d3ee", outline="")
+            self.create_image(cx, cy, image=self.pet_image)
+        self._draw_status_badge(cx, cy, t)
+
+    def _draw_shadow(self, cx: float, y: float, pulse: float) -> None:
+        self.create_oval(cx - 120, y + 5, cx + 120, y + 27, fill="#eaf5ff", outline="")
+        self.create_oval(cx - 88, y - 11, cx + 88, y + 14, fill="#d8eaff", outline="")
+        self.create_oval(cx - 68, y - 15, cx + 68, y + 7, fill="#f2faff", outline="")
+        glow = 24 * pulse
+        self.create_oval(cx - glow, y - 8, cx + glow, y + 11, fill="#bdf7ff", outline="")
+
+    def _draw_status_orbit(self, cx: float, cy: float, t: int) -> None:
+        if self.mood != "busy":
+            return
+        self.create_arc(cx - 128, cy - 72, cx + 128, cy + 72, start=10, extent=55, style="arc", outline="#7ddcff", width=2)
+        self.create_arc(cx - 128, cy - 72, cx + 128, cy + 72, start=190, extent=60, style="arc", outline="#b7f4ff", width=2)
+        for index in range(5):
+            angle = t / 8 + index * math.tau / 5
+            x = cx + math.cos(angle) * 122
+            y = cy + math.sin(angle) * 63
+            size = 3 + index % 3
+            self.create_oval(x - size, y - size, x + size, y + size, fill="#7df4ff", outline="")
+
+    def _draw_missing_asset(self, cx: float, cy: float) -> None:
+        self._rounded_rect(cx - 64, cy - 50, cx + 64, cy + 50, 24, fill="#e8f5ff", outline="#86c8ff", width=2)
+        self._rounded_rect(cx - 42, cy - 22, cx + 42, cy + 18, 18, fill="#11243d", outline="#30c7ff", width=2)
+        self.create_text(cx, cy - 1, text="AI", fill="#8ff8ff", font=("Arial", 17, "bold"))
+
+    def _draw_status_badge(self, cx: float, cy: float, t: int) -> None:
+        badge_x = cx + 72
+        badge_y = cy - 78
+        if self.mood == "busy":
+            self._rounded_rect(badge_x, badge_y, badge_x + 47, badge_y + 39, 16, fill="#e7f3ff", outline="#61b6ff", width=2)
+            for index in range(3):
+                x = badge_x + 17 + index * 8
+                y = badge_y + 20 + math.sin(t / 4 + index) * 2
+                self.create_oval(x - 2, y - 2, x + 2, y + 2, fill="#1d7fff", outline="")
+        elif self.mood == "done":
+            self._rounded_rect(badge_x, badge_y, badge_x + 47, badge_y + 39, 16, fill="#e8fff3", outline="#35c875", width=2)
+            self.create_line(
+                badge_x + 13,
+                badge_y + 21,
+                badge_x + 22,
+                badge_y + 30,
+                badge_x + 36,
+                badge_y + 12,
+                fill="#12a95b",
+                width=4,
+                capstyle="round",
+                joinstyle="round",
+            )
+        elif self.mood == "error":
+            self._rounded_rect(badge_x + 3, badge_y, badge_x + 44, badge_y + 39, 16, fill="#fff0f0", outline="#ff5b66", width=2)
+            self.create_line(badge_x + 24, badge_y + 10, badge_x + 24, badge_y + 24, fill="#e11d48", width=4, capstyle="round")
+            self.create_oval(badge_x + 21, badge_y + 29, badge_x + 27, badge_y + 35, fill="#e11d48", outline="")
+        else:
+            self.create_oval(cx + 95, cy + 82, cx + 113, cy + 100, fill="#c7fbff", outline="")
+            self.create_oval(cx + 99, cy + 86, cx + 109, cy + 96, fill="#19c7df", outline="")
+            self.create_oval(cx + 101, cy + 88, cx + 105, cy + 92, fill="#ffffff", outline="")
+
+    def _rounded_rect(self, x0: float, y0: float, x1: float, y1: float, radius: float, **kwargs: Any) -> None:
+        points = [
+            x0 + radius,
+            y0,
+            x1 - radius,
+            y0,
+            x1,
+            y0,
+            x1,
+            y0 + radius,
+            x1,
+            y1 - radius,
+            x1,
+            y1,
+            x1 - radius,
+            y1,
+            x0 + radius,
+            y1,
+            x0,
+            y1,
+            x0,
+            y1 - radius,
+            x0,
+            y0 + radius,
+            x0,
+            y0,
+        ]
+        self.create_polygon(points, smooth=True, splinesteps=18, **kwargs)
 
 
 class LayoutReviewPetApp:
@@ -187,6 +243,14 @@ class LayoutReviewPetApp:
         bubble.pack(fill="x", pady=(0, 8))
         ttk.Label(bubble, textvariable=self.status_text, wraplength=340).pack(anchor="w")
         ttk.Label(bubble, textvariable=self.summary_text, foreground="#2563eb").pack(anchor="w", pady=(4, 0))
+        quick_results = ttk.Frame(bubble)
+        quick_results.pack(fill="x", pady=(8, 0))
+        ttk.Button(quick_results, text="批注", command=lambda: self.open_report("annotated_docx")).pack(side="left", fill="x", expand=True)
+        ttk.Button(quick_results, text="修复稿", command=lambda: self.open_document_result("fixed_path")).pack(
+            side="left", fill="x", expand=True, padx=(6, 0)
+        )
+        ttk.Button(quick_results, text="报告", command=lambda: self.open_report("html")).pack(side="left", fill="x", expand=True, padx=(6, 0))
+        ttk.Button(quick_results, text="目录", command=self.open_output_dir).pack(side="left", fill="x", expand=True, padx=(6, 0))
 
         doc_box = ttk.LabelFrame(shell, text="论文", padding=8)
         doc_box.pack(fill="x", pady=(0, 8))
@@ -220,6 +284,9 @@ class LayoutReviewPetApp:
             row=1, column=0, sticky="ew", padx=(0, 6)
         )
         ttk.Button(result_box, text="结果目录", command=self.open_output_dir).grid(row=1, column=1, sticky="ew")
+        ttk.Button(result_box, text="导出结果", command=self.export_results).grid(
+            row=2, column=0, columnspan=2, sticky="ew", pady=(6, 0)
+        )
         result_box.columnconfigure(0, weight=1)
         result_box.columnconfigure(1, weight=1)
 
@@ -271,10 +338,12 @@ class LayoutReviewPetApp:
     def _position_panel(self) -> None:
         if self.panel is None:
             return
-        width = 370
-        height = 490
+        self.panel.update_idletasks()
+        width = max(PANEL_WIDTH, self.panel.winfo_reqwidth() + 4)
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
+        max_height = max(PANEL_MIN_HEIGHT, screen_height - PANEL_SCREEN_MARGIN)
+        height = min(max(PANEL_MIN_HEIGHT, self.panel.winfo_reqheight() + 4), max_height)
         x = self.root.winfo_x() + 295
         y = self.root.winfo_y() + 14
         if x + width > screen_width:
@@ -464,8 +533,45 @@ class LayoutReviewPetApp:
         if not self.result:
             messagebox.showwarning("暂无结果", "请先完成一次审核。")
             return
+        reports_dir = self._current_reports_dir()
+        self._open_path(str(reports_dir) if reports_dir else "")
+
+    def export_results(self) -> None:
+        reports_dir = self._current_reports_dir()
+        if reports_dir is None:
+            messagebox.showwarning("暂无结果", "请先完成一次审核。")
+            return
+        target = filedialog.askdirectory(title="选择导出结果的文件夹")
+        if not target:
+            return
+        destination = self._unique_export_dir(Path(target), reports_dir.parent.name)
+        try:
+            shutil.copytree(reports_dir, destination)
+        except OSError as exc:
+            messagebox.showerror("导出失败", str(exc))
+            return
+        messagebox.showinfo("导出完成", f"结果已导出到：\n{destination}")
+        self._open_path(str(destination))
+
+    def _current_reports_dir(self) -> Path | None:
+        if not self.result:
+            return None
         json_path = self.result.get("reports", {}).get("json")
-        self._open_path(str(Path(json_path).parent) if json_path else "")
+        if not json_path:
+            return None
+        reports_dir = Path(str(json_path)).parent
+        return reports_dir if reports_dir.exists() else None
+
+    def _unique_export_dir(self, target_dir: Path, run_id: str) -> Path:
+        base_name = f"layout_review_{run_id}"
+        destination = target_dir / base_name
+        if not destination.exists():
+            return destination
+        for index in range(2, 1000):
+            candidate = target_dir / f"{base_name}_{index}"
+            if not candidate.exists():
+                return candidate
+        return target_dir / f"{base_name}_{uuid4().hex[:8]}"
 
     def _open_path(self, value: Any) -> None:
         if not value:
@@ -475,10 +581,23 @@ class LayoutReviewPetApp:
         if not path.exists():
             messagebox.showwarning("文件不存在", str(path))
             return
+        try:
+            self._launch_path(path)
+        except OSError as exc:
+            parent = path if path.is_dir() else path.parent
+            try:
+                self._launch_path(parent)
+            except OSError:
+                pass
+            messagebox.showwarning("无法直接打开", f"系统无法直接打开：\n{path}\n\n已尝试打开所在目录。\n\n错误：{exc}")
+
+    def _launch_path(self, path: Path) -> None:
         if sys.platform.startswith("win"):
-            os.startfile(path)  # type: ignore[attr-defined]
-        else:
-            webbrowser.open(path.resolve().as_uri())
+            os.startfile(str(path))  # type: ignore[attr-defined]
+            return
+        opened = webbrowser.open(path.resolve().as_uri())
+        if not opened:
+            raise OSError(f"无法打开 {path}")
 
     def _busy(self, text: str) -> None:
         self.busy = True
